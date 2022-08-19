@@ -7,8 +7,8 @@ c = db.cursor()
 # создание таблицы
 
 c.execute("""CREATE TABLE pass(
-    nik TEXT PRIMARY KEY,
-    FIO_guest TEXT,
+    nik TEXT,
+    FIO_guest TEXT PRIMARY KEY,
     FIO_user TEXT,
     time_of_action_pass TEXT,
     validity period_pass INT,

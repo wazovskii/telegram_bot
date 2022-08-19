@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import random
 
-token = '5770334169:AAF4yKlAOnppiB5RJKx2gthxe-49icmWKoI'
+token = '5726974119:AAF10aVFmLMSrf1hBX2OA8T1_gSYs9ObMbo'
 bot = telebot.TeleBot(token)
 
 bd_1 = ["reynardk"]
