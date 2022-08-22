@@ -1,57 +1,19 @@
-
-import sqlite3
 import telebot
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters, Updater, CallbackContext, CallbackQueryHandler
-from telebot import types
+import data_base as db
+#from telebot import types
 
 bot = telebot.TeleBot('939129359:AAF5qJUUmuityqGijDTqOPGm7uLkOGos1us')
 def start(update: Updater, context: CallbackContext):
     update.message.reply_text('Привет, ты cтудент?')
     return 1
 
-def search_nick_in_db(nick):
-    result = 0
-    try:
-        sqlite_connection = sqlite3.connect('db.db')
-        cursor = sqlite_connection.cursor()
-        print("Подключен к SQLite")
-        sqlite_select_query = "SELECT * from users WHERE nik=?"
-        cursor.execute(sqlite_select_query, (nick,))
-        records = cursor.fetchall()
-        result = len(records)
-        cursor.close()
-    except sqlite3.Error as error:
-        print("Ошибка при работе с SQLite", error)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Соединение с SQLite закрыто")
-    return result
-
-def search_nick_by_usrname(usern):
-    try:
-        sqlite_connection = sqlite3.connect('db.db')
-        cursor = sqlite_connection.cursor()
-        print("Подключен к SQLite")
-
-        sqlite_select_query = "SELECT * from users WHERE username=?"
-        cursor.execute(sqlite_select_query, (usern,))
-        records = cursor.fetchall()
-        result = records
-        cursor.close()
-
-    except sqlite3.Error as error:
-        print("Ошибка при работе с SQLite", error)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Соединение с SQLite закрыто")
-    return result
+conn = db.create_data_base("db.db")
 
 def pass_or_no_pass(update: Updater, context: CallbackContext):
     answer = update.message.text
     if answer.lower() == 'yes' :  # заменить на кнопку зайти в админку или добавлять гостя
-        if len(search_nick_by_usrname(update.message.chat.username)) == 0: # если уже есть в базе его username
+        if db.search_nick_by_usrname(conn, update.message.chat.username) == 0: # если уже есть в базе его username
             update.message.reply_text('напиши ник я добавлю тебя в базу и запомню')
             return 4
         else:
@@ -61,52 +23,42 @@ def pass_or_no_pass(update: Updater, context: CallbackContext):
         update.message.reply_text('неправильно!!')
         return ConversationHandler.END
 
-def insert_in_db(nick, usern):  # добавляем username в базу
-    sqliteConnection = sqlite3.connect('db.db')
-    cursor = sqliteConnection.cursor()
-    print("Successfully Connected to SQLite")
-    sql_update_query = """Update users set username = ?  where nik = ?"""
-    count = cursor.execute(sql_update_query, (usern, nick))
-    sqliteConnection.commit()
-    print("Record inserted successfully into SqliteDb_developers table ", cursor.rowcount)
-    cursor.close()
-
 def insert_id(update: Updater, context: CallbackContext): # юзера не было в базе
     nick = update.message.text
-    insert_in_db(nick, update.message.chat.username)
-    if search_nick_in_db(nick) == 1:
+    db.insert_in_db(conn, nick, update.message.chat.username)
+    if db.search_nick_in_db(conn, nick) == 1:
         update.message.reply_text('Назови того кого хочешь позвать!')
         return 3
 
 def take_fio_liable(update: Updater, context: CallbackContext):
     nick = update.message.text
-    if search_nick_in_db(nick) == 1:
+    if db.search_nick_in_db(conn, nick) == 1:
         update.message.reply_text('Назови того кого хочешь позвать! (ФИО полностью)')
         return 3
     else:
         update.message.reply_text('К сожалению я не знаю тебя и ты не можешь никого пригласить :с')
         return ConversationHandler.END
 
-def insert_pass(guest_fio, user_fio, nick): # создаем пропуск
-    sqliteConnection = sqlite3.connect('db.db')
-    cursor = sqliteConnection.cursor()
-    print("Successfully Connected to SQLite")
+# def insert_pass(conn, guest_fio, user_fio, nick): # создаем пропуск
+#     sqliteConnection = sqlite3.connect('db.db')
+#     cursor = sqliteConnection.cursor()
+#     print("Successfully Connected to SQLite")
 
-    sql_update_query = "INSERT INTO pass (nik, FIO_guest, FIO_user, time_of_action_pass, validity, status_pass) VALUES (?, ?, ?, ?, ?, ?)"
+#     sql_update_query = "INSERT INTO pass (nik, FIO_guest, FIO_user, time_of_action_pass, validity, status_pass) VALUES (?, ?, ?, ?, ?, ?)"
 
-    count = cursor.execute(sql_update_query, (nick, guest_fio, user_fio, None, None, None))
-    sqliteConnection.commit()
-    print("Record inserted successfully into SqliteDb_developers table ", cursor.rowcount)
-    cursor.close()
+#     count = cursor.execute(sql_update_query, (nick, guest_fio, user_fio, None, None, None))
+#     sqliteConnection.commit()
+#     print("Record inserted successfully into SqliteDb_developers table ", cursor.rowcount)
+#     cursor.close()
 
 
 def nick_in_db(update: Updater, context: CallbackContext):
     guest_fio = update.message.text
     FIO_guest = guest_fio
-    sech = search_nick_by_usrname(update.message.chat.username)
+    sech = db.search_nick_by_usrname(conn, update.message.chat.username)
     user_fio = sech[0][3]
-    nick = search_nick_by_usrname(update.message.chat.username)[0][2]
-    insert_pass(guest_fio, user_fio, nick)
+    nick = db.search_nick_by_usrname(conn, update.message.chat.username)[0][2]
+    # db.insert_pass(guest_fio, user_fio, nick)
     return 7
 
 def set_visit_time(time, nik):
@@ -191,8 +143,9 @@ def take_your_time():
     nik = 'johniety' # убрать
     set_visit_time(day+' '+time, nik) # сделать day time из answer и nik глобальными (у меня не получилось) и дергать оттуда 
 
-def stop(bot, update):
+def stop(update: Updater, context: CallbackContext):
     update.message.reply_text("Жаль.")
+    conn.close()
     return ConversationHandler.END
 
 conv_handler = ConversationHandler(
@@ -210,10 +163,10 @@ conv_handler = ConversationHandler(
 )
 
 updater = Updater('5770334169:AAF4yKlAOnppiB5RJKx2gthxe-49icmWKoI')
-dp = updater.dispatcher
+disp = updater.dispatcher
 
-dp.add_handler(conv_handler)
-dp.add_handler(CommandHandler('start', start))
-dp.add_handler(CommandHandler('stop', stop))
+disp.add_handler(conv_handler)
+disp.add_handler(CommandHandler('start', start))
+disp.add_handler(CommandHandler('stop', stop))
 updater.start_polling()
 updater.idle()
