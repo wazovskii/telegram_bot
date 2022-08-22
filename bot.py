@@ -8,7 +8,7 @@ def start(update: Updater, context: CallbackContext):
     update.message.reply_text('Привет, ты cтудент?')
     return 1
 
-conn = db.create_data_base("db.db")
+conn = db.create_connection("db.db")
 
 def pass_or_no_pass(update: Updater, context: CallbackContext):
     answer = update.message.text
@@ -39,7 +39,7 @@ def take_fio_liable(update: Updater, context: CallbackContext):
         update.message.reply_text('К сожалению я не знаю тебя и ты не можешь никого пригласить :с')
         return ConversationHandler.END
 
-# def insert_pass(conn, guest_fio, user_fio, nick): # создаем пропуск
+# def insert_pass(conn, guest_fio, user_fio, nick): # создавать пропуск нужно когда известан вся информация(дата и время)
 #     sqliteConnection = sqlite3.connect('db.db')
 #     cursor = sqliteConnection.cursor()
 #     print("Successfully Connected to SQLite")

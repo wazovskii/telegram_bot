@@ -78,7 +78,9 @@ def search_nick_in_db(conn, nick):
         sqlite_select_query = "SELECT * from users WHERE nick=?"
         cursor.execute(sqlite_select_query, (nick,))
         records = cursor.fetchall()
-        result = len(records)
+        result = records[0][1] != ''
+        for i in records():
+            print(i)
     except Error as error:
         print("Ошибка при работе с SQLite", error)
     return result
