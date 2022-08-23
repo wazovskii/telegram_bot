@@ -1,34 +1,40 @@
+# from tkinter.messagebox import NO
+# from venv import create
+
 import telebot
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters, Updater, CallbackContext, CallbackQueryHandler
 import data_base as db
+from pathlib import Path
+
 #from telebot import types
 
-bot = telebot.TeleBot('939129359:AAF5qJUUmuityqGijDTqOPGm7uLkOGos1us')
+database = "db.db"
+path = Path(database)
+conn = None
+if (path.is_file()):
+    conn = db.create_connection(database)
+else:
+    conn = db.create_data_base(database)
+
+#bot = telebot.TeleBot('939129359:AAF5qJUUmuityqGijDTqOPGm7uLkOGos1us')
 def start(update: Updater, context: CallbackContext):
-    update.message.reply_text('Привет, ты cтудент?')
-    return 1
-
-conn = db.create_connection("db.db")
-
-def pass_or_no_pass(update: Updater, context: CallbackContext):
-    answer = update.message.text
-    if answer.lower() == 'yes' :  # заменить на кнопку зайти в админку или добавлять гостя
-        if db.search_nick_by_usrname(conn, update.message.chat.username) == 0: # если уже есть в базе его username
-            update.message.reply_text('напиши ник я добавлю тебя в базу и запомню')
-            return 4
-        else:
-            update.message.reply_text('Назови того кого хочешь позвать! (ФИО полностью)')
-            return 3
+    res = db.search_nick_by_usrname(conn, update.message.chat.username)
+    if len(res) == 0: # если уже есть в базе его username
+        update.message.reply_text('напиши ник я добавлю тебя в базу и запомню')
+        return 4
     else:
-        update.message.reply_text('неправильно!!')
-        return ConversationHandler.END
+        update.message.reply_text('Назови того кого хочешь позвать! (ФИО полностью)')
+        return 3
 
 def insert_id(update: Updater, context: CallbackContext): # юзера не было в базе
     nick = update.message.text
-    db.insert_in_db(conn, nick, update.message.chat.username)
-    if db.search_nick_in_db(conn, nick) == 1:
+    if db.search_nick_in_db(conn, nick) != 0:
+        db.ubdate_username(conn, nick, update.message.chat.username)
         update.message.reply_text('Назови того кого хочешь позвать!')
         return 3
+    else:
+        update.message.reply_text('К сожалению я не знаю тебя и ты не можешь никого пригласить :с')
+        return ConversationHandler.END
 
 def take_fio_liable(update: Updater, context: CallbackContext):
     nick = update.message.text
@@ -39,27 +45,12 @@ def take_fio_liable(update: Updater, context: CallbackContext):
         update.message.reply_text('К сожалению я не знаю тебя и ты не можешь никого пригласить :с')
         return ConversationHandler.END
 
-# def insert_pass(conn, guest_fio, user_fio, nick): # создавать пропуск нужно когда известан вся информация(дата и время)
-#     sqliteConnection = sqlite3.connect('db.db')
-#     cursor = sqliteConnection.cursor()
-#     print("Successfully Connected to SQLite")
-
-#     sql_update_query = "INSERT INTO pass (nik, FIO_guest, FIO_user, time_of_action_pass, validity, status_pass) VALUES (?, ?, ?, ?, ?, ?)"
-
-#     count = cursor.execute(sql_update_query, (nick, guest_fio, user_fio, None, None, None))
-#     sqliteConnection.commit()
-#     print("Record inserted successfully into SqliteDb_developers table ", cursor.rowcount)
-#     cursor.close()
-
-
 def nick_in_db(update: Updater, context: CallbackContext):
     guest_fio = update.message.text
-    FIO_guest = guest_fio
-    sech = db.search_nick_by_usrname(conn, update.message.chat.username)
-    user_fio = sech[0][3]
-    nick = db.search_nick_by_usrname(conn, update.message.chat.username)[0][2]
-    # db.insert_pass(guest_fio, user_fio, nick)
-    return 7
+    user_fio = db.search_nick_by_usrname(conn, update.message.chat.username)[0][1]
+    db.insert_pass(conn, guest_fio, user_fio)
+    #return 7
+    return ConversationHandler.END
 
 def set_visit_time(time, nik):
     sqliteConnection = sqlite3.connect('db.db')
@@ -141,7 +132,7 @@ def take_your_time():
     day = '22.08' # убрать
     time =  '10.00-12.00' # убрать
     nik = 'johniety' # убрать
-    set_visit_time(day+' '+time, nik) # сделать day time из answer и nik глобальными (у меня не получилось) и дергать оттуда 
+    set_visit_time(day + ' ' + time, nik) # сделать day time из answer и nik глобальными (у меня не получилось) и дергать оттуда 
 
 def stop(update: Updater, context: CallbackContext):
     update.message.reply_text("Жаль.")
@@ -151,7 +142,7 @@ def stop(update: Updater, context: CallbackContext):
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler('start', start)],
     states={
-    1: [MessageHandler(Filters.text, pass_or_no_pass)],
+    # 1: [MessageHandler(Filters.text, pass_or_no_pass)],
     2: [MessageHandler(Filters.text, take_fio_liable)],
     3: [MessageHandler(Filters.text, nick_in_db)],
     4: [MessageHandler(Filters.text, insert_id)],
